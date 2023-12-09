@@ -187,14 +187,6 @@ Here we define our global PATH variable 'PROJECT_ROOT_PATH' and link our imports
 ```php 
 define("PROJECT_ROOT_PATH", __DIR__ . "/../");
 
-require_once PROJECT_ROOT_PATH . "/inc/config.php";
-require_once PROJECT_ROOT_PATH . "/Model/Database.php";
-require_once PROJECT_ROOT_PATH . "/Controller/Api/BaseController.php";
-require_once PROJECT_ROOT_PATH . "/Controller/Api/EmployeeController.php";
-require_once PROJECT_ROOT_PATH . "/Model/UserModel.php";
-require_once PROJECT_ROOT_PATH . "/Model/EmployeeModel.php";
-
-
 ```
 
 The '.' here means to add. So in this case our current directory '__DIR__' + "/../".
@@ -203,6 +195,181 @@ The "/../" parts makes it so that when you append that part, that it moves one l
 
 Then we import all files needed, so we don't have to define them later inside of each model or controller or the index.
 
+```php
+require_once PROJECT_ROOT_PATH . "/inc/config.php";
+require_once PROJECT_ROOT_PATH . "/Controller/Api/BaseController.php";
+require_once PROJECT_ROOT_PATH . "/Controller/Api/UserController.php";
+require_once PROJECT_ROOT_PATH . "/Model/Database.php";
+require_once PROJECT_ROOT_PATH . "/Model/UserModel.php";
+
+```
+
 This is why we don't have to import the Database.php in our UserModel class.
 
 This is all for the 'inc' folder.
+
+## Controller
+
+As the word itself says, these are the classes that control the data that is asked from the api call and returns the data with the corresponding headers back.
+
+We will add these to a folder call Api. This way we know these are the controllers that handle the api calls from the index.php
+
+### BaseController.php
+
+Just as the Database.php was for our models. This will be the class that will be extended by our other controllers which contains the structure for them.
+
+First we will create a magic php method.
+
+```php
+    public function __call($name, $arguments)
+    {
+        $this->sendOutput('', array('HTTP/1.1 404 Not Found'));
+    }
+
+```
+
+This is a magic method in PHP that gets invoked when invoking inaccessible methods in an object context. In this particular implementation, if a method is called on an instance of BaseController that doesn't exist, it will execute the sendOutput() method with an empty string as the data and a '404 Not Found' HTTP header.
+
+Next we create a function 'getUriSegments()'.
+
+```php
+    protected function getUriSegments()
+    {
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $uri = explode("/", $uri);
+
+        return $uri;
+    }
+
+```
+
+This method retrieves segments of the URI by parsing $_SERVER['REQUEST_URI'], which contains the URI requested by the client. It uses parse_url() to get the path and explode() to split it into segments, returning an array containing the URI segments.
+
+We also need a function to get all the parameters from the querys string of the url. (The part after '?')
+
+```php
+    protected function getQueryStringParams()
+    {
+        $queryString = isset($_SERVER["QUERY_STRING"]) ? $_SERVER["QUERY_STRING"] : '';
+        parse_str($queryString, $query);
+        return $query;
+    }
+
+```
+
+This method retrieves query string parameters from the current request's URL. It uses $_SERVER["QUERY_STRING"] to get the query string and parse_str() to parse it into an associative array of parameters.
+
+If the query string hasn't been defined we pass an empty string as value.
+
+And for last we create a function that sends the output back, along with the correct headers it receives or the error headers if there is one.
+
+```php
+    protected function sendOutput($data, $httpHeaders = array())
+    {
+        header_remove('Set-Cookie');
+
+        if (is_array($httpHeaders) && count($httpHeaders)) {
+            foreach ($httpHeaders as $httpHeader){
+                header($httpHeader);
+            }
+        }
+
+        echo $data;
+        exit;
+    }
+
+```
+
+This method is responsible for sending the output to the client. It begins by removing any 'Set-Cookie' headers set previously. Then, it sets any provided HTTP headers using header(), followed by echoing the $data and exiting the script using exit.
+
+Now that we have created the base functionality functions our controllers need. We can go ahead and create a UserController class.
+
+### UserController.php
+
+First of all we will extend our UserController with the BaseController class.
+
+```php
+class UserController extends BaseController
+{
+}
+
+```
+
+Now we need a function that gets called from the index.php after a api request has been sent from the user.
+
+```php
+    public function listAction()
+    {
+    }
+
+```
+
+We will reference this function later when a certain link has been requested.
+
+There are a few things we need if we want to check what the user requested.
+
+```php
+        $strErrorDesc = "";
+        $requestMethod = $_SERVER["REQUEST_METHOD"];
+        $arrQueryStringParams = $this->getQueryStringParams();
+
+```
+    
+First we will define some variables to be used.
+
+- $strErrorDesc = "" : An empty string which will be change depending on the error we get, if there is an error ofcourse.
+- $requestMethod = $_SERVER["REQUEST_METHOD"] : We will check the server variable 'REQUEST_METHOD' to see if the api got a "POST" or a "GET" request. Depending on this we do a different fuction.
+- $arrQueryStringParams = $this->getQueryStringParams() : We get the parameters from the query string, using the function of the 'BaseController' class.
+
+Then we go and check if it's a GET request or not.
+
+```php
+        if (strtoupper($requestMethod) == "GET") {
+            try {
+                $userModel = new UserModel();
+    
+                $intLimit = 10;
+                if (isset($arrQueryStringParams["limit"]) && $arrQueryStringParams["limit"]) {
+                    $intLimit = $arrQueryStringParams["limit"];
+                }
+    
+                $arrUsers = $userModel->getUsers($intLimit);
+                $responseData = json_encode($arrUsers);
+            } catch (Exception $e) {
+                $strErrorDesc = $e->getMessage().'Something went wrong! Please contact support.';
+                $strErrorHeader = 'HTTP/1.1 500 Internal Server Error';
+            }
+        } else {
+            $strErrorDesc = "Method not supported";
+            $strErrorHeader = "HTTP/1.1 422 Unprocessable Entity";
+        }
+
+```
+
+If it is a GET request:
+
+- It creates an instance of the UserModel.
+- It sets a default limit of 10 users ($intLimit = 10) and checks if the limit parameter exists in the query string. If it does, it updates $intLimit accordingly.
+- Calls the getUsers() method from the UserModel, passing the limit, and stores the result in $arrUsers.
+- Encodes $arrUsers into JSON format and assigns it to $responseData.
+- If an exception occurs during the process (e.g., an error within the getUsers() method), it catches the exception and sets an error description along with an HTTP header for an internal server error (HTTP status code 500).
+
+If not a GET:
+
+- If the request method is not GET, it sets an error description indicating that the method is not supported along with an appropriate error header (HTTP status code 422).
+
+Then we check if there is an error, and send the data back with the corresponding headers.
+
+```php
+        if (!$strErrorDesc) {
+            $this->sendOutput($responseData, array("Content-Type: application/json", "HTTP/1.1 200 OK"));
+        } else {
+            $this->sendOutput(json_encode(array('error' => $strErrorDesc)),
+                array('Content-Type: application/json', $strErrorHeader));
+        }
+
+```
+
+- If there are no errors ($strErrorDesc is empty), it uses the sendOutput() method from the BaseController class to send the JSON-encoded response ($responseData) with a '200 OK' status header (HTTP/1.1 200 OK).
+- If there are errors (non-empty $strErrorDesc), it constructs a JSON response with an error message and uses the sendOutput() method to send this error response.
+It sends the error message in the format of {"error": "<error_description>"} along with an appropriate error header ($strErrorHeader), which was set in the previous conditional blocks depending on the encountered error.
