@@ -89,13 +89,13 @@ We will make this a private function, because this will only be called by funtio
 
 This function needs to get a query that will it execute and some parameters to filter the query with.
 
-First we will let the database prepare our query. This will let it know what query we want the database to run.
+- First we will let the database prepare our query. This will let it know what query we want the database to run.
 
-If the $stmt variable is false afterwards, it means it's an invalid query. So we check that first before we execute it.
+- If the $stmt variable is false afterwards, it means it's an invalid query. So we check that first before we execute it.
 
-Then we will also add our parameters to our statement using the 'bind_param()' method.
+- Then we will also add our parameters to our statement using the 'bind_param()' method.
 
-When this is done, we will execute our statement and return it.
+- When this is done, we will execute our statement and return it.
 
 When this is done we can add a public function that can be called outside this class, that runs the 'executeStatement' function with a certain query and some parameters.
 
@@ -114,11 +114,13 @@ In this case a select function.
 
 This will run the select query that gets passed on to it from the model class that extends this Database.php structure class.
 
-So after getting the result from the 'executeStatement' function, we will first get the reults from the statement using 'get_result()' method. This returns a set of data. Then we will convert that result set into an array using 'fetch_all'. We pass the 'MYSQLI_ASSOC' argument to specify that the fieldname should be the array index.
+- First we will execute the 'executeStatement' function
 
-After that we should always CLOSE our database connection. Otherwise this will give us conflict when preparing a new statement.
+- Then we will get the results from the statement using 'get_result()' method. This returns a set of data. Then we will convert that result set into an array using 'fetch_all'. We pass the 'MYSQLI_ASSOC' argument to specify that the fieldname should be the array index.
 
-And then we return the result back.
+- After that we should always CLOSE our database connection. Otherwise this will give us conflict when preparing a new statement.
+
+- And then we return the result back.
 
 Now how is this implemented in our model ?
 
