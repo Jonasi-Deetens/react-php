@@ -437,3 +437,16 @@ $objFeedController->{$strMethodName}();
 - Calls the corresponding method in the UserController based on the URI segment.
 
 Once you get the hang of this layout, you can add controllers and models depending on your database structure. And change the index.php to handle uri requests to different controllers if needed.
+
+To test if your api works. Enter the terminal and go to the location of the index.php.
+
+Then use the command 
+
+```
+php -S localhost:8000
+
+```
+
+Now you can open your browser and go to:
+
+http://localhost:8000/user/list?limit=20
