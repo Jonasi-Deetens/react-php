@@ -373,3 +373,67 @@ Then we check if there is an error, and send the data back with the correspondin
 - If there are no errors ($strErrorDesc is empty), it uses the sendOutput() method from the BaseController class to send the JSON-encoded response ($responseData) with a '200 OK' status header (HTTP/1.1 200 OK).
 - If there are errors (non-empty $strErrorDesc), it constructs a JSON response with an error message and uses the sendOutput() method to send this error response.
 It sends the error message in the format of {"error": "<error_description>"} along with an appropriate error header ($strErrorHeader), which was set in the previous conditional blocks depending on the encountered error.
+
+Now everything has been setup to get the data and display it. We still need to define our index.php which calls upon these classes after our api gets a request.
+
+## index.php
+
+First thing here is importing all our configurations and settings.
+
+```php
+require __DIR__ . "/inc/bootstrap.php";
+
+```
+
+This is the file where all our imports are linked, and the 'PROJECT_ROOT_PATH' variable is defined.
+
+The next part is setting up an access control header.
+
+```php
+header('Access-Control-Allow-Origin: http://localhost:3001');
+
+```
+
+This line sets the CORS header to allow requests from a specific origin (http://localhost:3001). CORS headers are used to control access to resources from different origins in web browsers.
+
+Now we want to get the uri from the api call.
+
+```php
+$uri = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+$uri = explode("/", $uri);
+
+```
+It parses the requested URI ($_SERVER["REQUEST_URI"]) and splits it into segments using the / delimiter. This helps in extracting different parts of the URI.
+
+Then we check if it's a valid uri, or we have controllers set up for that uri.
+
+In our case we want to check if there is a request to user/list to see if our listAction is getting called.
+
+```php
+if ((isset($uri[1]) && $uri[1] != "user") || !isset($uri[2])) {
+    header("HTTP/1.1 404 Not Found");
+    exit();
+}
+
+```
+
+This condition checks whether the URI contains specific segments:
+- It checks if the second segment of the URI is not "user" or if the third segment is missing.
+- If the condition is true, it sets the HTTP response status to '404 Not Found' and exits the script.
+
+So if the api link is "localhost:8000/user/_something_" we send the third part to our controller.
+
+In this case we only support "localhost:8000/user/list" since we have no other actions in our UserController.
+
+```php
+$objFeedController = new UserController();
+$strMethodName = $uri[2] . 'Action';
+$objFeedController->{$strMethodName}();
+
+```
+
+- It instantiates an UserController.
+- Constructs the method name based on the third segment of the URI followed by 'Action'.
+- Calls the corresponding method in the UserController based on the URI segment.
+
+Once you get the hang of this layout, you can add controllers and models depending on your database structure. And change the index.php to handle uri requests to different controllers if needed.
